@@ -13,14 +13,17 @@ SMCLIENT=""
 HOSTIP=""
 SMMON=""
 WEBUI=""
+NOWEBUI=""
 WEBCORE=""
 DOMAIN=""
 APPARMOR=""
 PASSENGER=""
 BINDLOGGING=""
+SMLITE=""
 HOST_IP_LIST=`ifconfig | sed -n -e 's/:127\.0\.0\.1 //g' -e 's/ *inet addr:\([0-9.]\+\).*/\1/gp'`
 LOCALHOSTIP=`echo $HOST_IP_LIST | cut -d' ' -f1`
 echo $LOCALHOSTIP
+
 
 function usage()
 {
@@ -28,6 +31,8 @@ function usage()
     echo ""
     echo "$0"
     echo "\t-h --help"
+    echo "\t--smlite"
+    echo "\t--nowebui"
     echo "\t--sm=$SM"
     echo "\t--sm-client=$SMCLIENT"
     echo "\t--webui=$WEBUI"
@@ -55,6 +60,12 @@ while [ "$1" != "" ]; do
         --all)
             ALL="all"
             ;;
+	--smlite)
+	    SMLITE="smlite"
+	    ;;
+	--nowebui)
+	    NOWEBUI="nowebui"
+	    ;;
         --sm)
             SM=$VALUE
             ;;
@@ -101,13 +112,16 @@ if [ "$ALL" != "" ]; then
      elif [[ "$line" == *monitoring* ]];
      then
        SMMON=$line
-     elif [[ "$line" == *web-server-manager* ]];
+     elif [[ "$line" == *web-server-manager* ]] && [ "$NOWEBUI" == "" ];
      then
        WEBUI=$line
-     elif [[ "$line" == *web-core* ]];
+     elif [[ "$line" == *web-core* ]] && [ "$NOWEBUI" == "" ];
      then
        WEBCORE=$line
-     elif [[ "$line" != *client*  &&  "$line" != *monitoring*  &&  "$line" != *web* ]];
+     elif [[ "$line" == *contrail-server-manager_[0-9]* ]] && [ "$SMLITE" == "" ];
+     then
+       SM=$line
+     elif [[ "$line" == *contrail-server-manager-lite_[0-9]* ]] && [ "$SMLITE" != "" ];
      then
        SM=$line
      fi
@@ -145,14 +159,9 @@ apt-get -y install dpkg-dev
 dpkg-scanpackages . /dev/null | gzip -9c > Packages.gz
 apt-get update --yes
 
-# install base packages and fabric utils
-#DEBIAN_FRONTEND=noninteractive apt-get -y --force-yes --allow-unauthenticated install contrail-setup
-#pip install --upgrade --no-deps --index-url='' /opt/contrail/python_packages/ecdsa-0.10.tar.gz
-
 apt-get -y install gdebi-core
 
 cd /opt/contrail/contrail_server_manager
-
 
 function save_cobbler_state()
 {
@@ -182,7 +191,6 @@ function replace_cobbler_state()
   echo "$space### End: Replacing Cobbler State"
 }
 
-
 function passenger_install()
 {
   rel=`lsb_release -r`
@@ -204,7 +212,7 @@ function passenger_install_14()
     rm /etc/apt/preferences.d/00-puppet.pref
   fi
   echo -e "# /etc/apt/preferences.d/00-puppet.pref\nPackage: puppet puppet-common puppetmaster-passenger\nPin: version 3.7.3\nPin-Priority: 501" >> /etc/apt/preferences.d/00-puppet.pref
-  passenger-install-apache2-module --auto --languages 'ruby,python,nodejs' &> /dev/null
+  # passenger-install-apache2-module --auto --languages 'ruby,python,nodejs' &> /dev/null
   mkdir -p /usr/share/puppet/rack/puppetmasterd
   mkdir -p /usr/share/puppet/rack/puppetmasterd/public /usr/share/puppet/rack/puppetmasterd/tmp
   cp /usr/share/puppet/ext/rack/config.ru /usr/share/puppet/rack/puppetmasterd/
@@ -216,7 +224,7 @@ function passenger_install_14()
   # passenger version is hard coded at puppetmasterd, hence the following change
   rel=`passenger --version`
   rel=( $rel )
-  sed -i "s|LoadModule passenger_module /var/lib/gems/1.8/gems/passenger-4.0.53/buildout/apache2/mod_passenger.so|LoadModule passenger_module /var/lib/gems/1.9.1/gems/passenger-${rel[3]}/buildout/apache2/mod_passenger.so|g" /etc/apache2/sites-available/puppetmaster.conf
+  sed -i "s|LoadModule passenger_module /var/lib/gems/1.8/gems/passenger-4.0.53/buildout/apache2/mod_passenger.so|LoadModule passenger_module /opt/contrail/contrail_server_manager/mod_passenger.so|g" /etc/apache2/sites-available/puppetmaster.conf
   sed -i "s|PassengerRoot /var/lib/gems/1.8/gems/passenger-4.0.53|PassengerRoot /var/lib/gems/1.9.1/gems/passenger-${rel[3]}|g" /etc/apache2/sites-available/puppetmaster.conf
   sed -i "s|PassengerDefaultRuby /usr/bin/ruby1.8|PassengerDefaultRuby /usr/bin/ruby1.9.1|g" /etc/apache2/sites-available/puppetmaster.conf
   a2ensite puppetmaster
@@ -254,8 +262,9 @@ function passenger_install_12()
     apt-get -y install apache2 ruby1.8-dev rubygems libcurl4-openssl-dev libssl-dev zlib1g-dev apache2-threaded-dev libapr1-dev libaprutil1-dev
     a2enmod ssl
     a2enmod headers
+    a2enmod version
     gem install rack passenger
-    passenger-install-apache2-module --auto --languages 'ruby,python,nodejs' &> /dev/null
+    #passenger-install-apache2-module --auto --languages 'ruby,python,nodejs' &> /dev/null
     mkdir -p /usr/share/puppet/rack/puppetmasterd
     mkdir -p /usr/share/puppet/rack/puppetmasterd/public /usr/share/puppet/rack/puppetmasterd/tmp
     cp /usr/share/puppet/ext/rack/config.ru /usr/share/puppet/rack/puppetmasterd/
@@ -267,7 +276,7 @@ function passenger_install_12()
     # passenger version is hard coded at puppetmasterd, hence the following change
     rel=`passenger --version`
     rel=( $rel )
-    sed -i "s|LoadModule passenger_module /var/lib/gems/1.8/gems/passenger-4.0.53/buildout/apache2/mod_passenger.so|LoadModule passenger_module /var/lib/gems/1.8/gems/passenger-${rel[3]}/buildout/apache2/mod_passenger.so|g" /etc/apache2/sites-available/puppetmasterd
+    sed -i "s|LoadModule passenger_module /var/lib/gems/1.8/gems/passenger-4.0.53/buildout/apache2/mod_passenger.so|LoadModule passenger_module /opt/contrail/contrail_server_manager/mod_passenger.so|g" /etc/apache2/sites-available/puppetmasterd
     sed -i "s|PassengerRoot /var/lib/gems/1.8/gems/passenger-4.0.53|PassengerRoot /var/lib/gems/1.8/gems/passenger-${rel[3]}|g" /etc/apache2/sites-available/puppetmasterd
     a2ensite puppetmasterd
     host=`echo $HOSTNAME | awk '{print tolower($0)}'`
@@ -430,27 +439,49 @@ if [ "$SM" != "" ]; then
 
   apt-get -y install software-properties-common
   # Check if this is an upgrade
-  check=`dpkg --list | grep "contrail-server-manager "`
+
+  if [ "$SMLITE" != "" ]; then
+      check=`dpkg --list | grep "contrail-server-manager-lite "`
+  else
+      check=`dpkg --list | grep "contrail-server-manager "`
+  fi
   if [ "$check" != ""  ]; then
     # Upgrade
-    save_cobbler_state
-    cv=`cobbler --version`
-    cv=( $cv  )
-    if [ "${cv[1]}" != "2.6.3" ]; then
-      dpkg -P --force-all python-cobbler
-      dpkg -P --force-all cobbler-common
-      dpkg -P --force-all cobbler-web
-      dpkg -P --force-all cobbler
-      dpkg -P --force-all contrail-server-manager
+    if [ "$SMLITE" != "" ]; then
+       dpkg -P --force-all contrail-server-manager-lite
+       if [ ${rel[1]} != "14.04"  ]; then
+	   a2enmod version
+       fi
+    else
+       save_cobbler_state
+       cv=`cobbler --version`
+       cv=( $cv  )
+       if [ "${cv[1]}" != "2.6.3" ]; then
+          dpkg -P --force-all python-cobbler
+          dpkg -P --force-all cobbler-common
+          dpkg -P --force-all cobbler-web
+          dpkg -P --force-all cobbler
+          dpkg -P --force-all contrail-server-manager
+       fi
+       install_cobbler
     fi
-    install_cobbler
     if [ -e /etc/apache2/sites-enabled/puppetmasterd ]; then
-      rm /etc/apache2/sites-enabled/puppetmasterd
+       rm /etc/apache2/sites-enabled/puppetmasterd
     fi
+    pip install pyyaml
     gdebi -n $SM
-    replace_cobbler_state
+    if [ "$SMLITE" != "" ]; then
+       :
+    else
+       replace_cobbler_state
+    fi
   else
-    install_cobbler
+    if [ "$SMLITE" != "" ]; then
+       :
+    else
+       install_cobbler
+    fi
+    pip install pyyaml
     gdebi -n $SM
   fi
 
@@ -462,60 +493,46 @@ if [ "$SM" != "" ]; then
   # Adding server and Public DNS to /etc/resolv.conf if not present
   grep "nameserver $LOCALHOSTIP" /etc/resolv.conf
   if [ $? != 0 ]; then
-    echo "nameserver $LOCALHOSTIP" >> /etc/resolv.conf
+      echo "nameserver $LOCALHOSTIP" >> /etc/resolv.conf
   fi
   grep "nameserver 8.8.8.8" /etc/resolv.conf
   if [ $? != 0 ]; then
-    echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+      echo "nameserver 8.8.8.8" >> /etc/resolv.conf
   fi
-  grep "bind_master: $LOCALHOSTIP" /etc/cobbler/settings
-  if [ $? != 0 ]; then
-    echo "bind_master: $LOCALHOSTIP" >> /etc/cobbler/settings
-  fi
-
-  HOSTNAME=`hostname`
-  grep "$HOSTIP " /etc/hosts
-  if [ $? != 0 ]; then
-    if [ "$DOMAIN" != "" ]; then
-      sed -i "1s#^#${HOSTIP} ${HOSTNAME} ${HOSTNAME}.${DOMAIN}\n#g" /etc/hosts
-    else
-      sed -i "1s#^#${HOSTIP} ${HOSTNAME}\n#g" /etc/hosts
-    fi
+  if [ "$SMLITE" != "" ]; then
+     :
   else
-    grep "$HOSTIP .*$HOSTNAME.*" /etc/hosts
-    if [ $? != 0 ]; then
-      if [ "$DOMAIN" != "" ]; then
-        sed -i "/^${HOSTIP}/ s/$/ ${HOSTNAME} ${HOSTNAME}.${DOMAIN}/g" /etc/hosts
-      else
-        sed -i "/^${HOSTIP}/ s/$/ ${HOSTNAME}/g" /etc/hosts
-      fi
-    fi
-    if [ "$DOMAIN" != "" ]; then
-      grep "$HOSTIP .*$HOSTNAME\.$DOMAIN.*" /etc/hosts
-      if [ $? != 0 ]; then
-        sed -i "/^${HOSTIP}/ s/$/ ${HOSTNAME}.${DOMAIN}/g" /etc/hosts
-      fi
-    fi
+     grep "bind_master: $LOCALHOSTIP" /etc/cobbler/settings
+     if [ $? != 0 ]; then
+	echo "bind_master: $LOCALHOSTIP" >> /etc/cobbler/settings
+     fi
   fi
 
   if [ "$PASSENGER" != "no"  ]; then
     passenger_install
   fi
 
-  if [ "$BINDLOGGING" == "yes" ]; then
-    bind_logging
-  fi
-
-  if [ "$DOMAIN" != "" ]; then
-    grep "manage_forward_zones: ['$DOMAIN']" /etc/cobbler/settings
-    if [ $? != 0 ]; then
-      sed -i "s/manage_forward_zones:.*/manage_forward_zones: ['$DOMAIN']/g" /etc/cobbler/settings
-    fi
+  if [ "$SMLITE" != "" ]; then
+     :
+  else
+     if [ "$BINDLOGGING" == "yes" ]; then
+	bind_logging
+     fi
+     if [ "$DOMAIN" != "" ]; then
+	grep "manage_forward_zones: ['$DOMAIN']" /etc/cobbler/settings
+	if [ $? != 0 ]; then
+	   sed -i "s/manage_forward_zones:.*/manage_forward_zones: ['$DOMAIN']/g" /etc/cobbler/settings
+	fi
+     fi
   fi
   echo "### End: Installing Server Manager"
-  echo "IMPORTANT: CONFIGURE /ETC/COBBLER/DHCP.TEMPLATE, NAMED.TEMPLATE, SETTINGS TO BRING UP SERVER MANAGER."
-  echo "If your install has failed, please make sure the /etc/apt/sources.list file reflects the default sources.list for your version of Ubuntu."
-  echo "Sample sources.list files are available at /opt/contrail/contrail_server_manager/."
+  if [ "$SMLITE" != "" ]; then
+     :
+  else
+     echo "IMPORTANT: CONFIGURE /ETC/COBBLER/DHCP.TEMPLATE, NAMED.TEMPLATE, SETTINGS TO BRING UP SERVER MANAGER."
+     echo "If your install has failed, please make sure the /etc/apt/sources.list file reflects the default sources.list for your version of Ubuntu."
+     echo "Sample sources.list files are available at /opt/contrail/contrail_server_manager/."
+  fi
   echo "Install log is at /var/log/contrail/install_logs/"
 fi
 
@@ -530,7 +547,7 @@ if [ "$SMCLIENT" != "" ]; then
   echo "### End: Installing Server Manager Client"
 fi
 
-if [ "$WEBUI" != "" ]; then
+if [ "$WEBUI" != "" && "$NOWEBUI" == "" ]; then
   echo "### Begin: Installing Server Manager Web UI"
   echo "WEBUI is $WEBUI"
   # install webui
@@ -640,9 +657,12 @@ if [ "$SMMON" != "" ]; then
       cat /opt/contrail/server_manager/sm-inventory-config.ini >> /opt/contrail/server_manager/sm-config.ini
   fi
   echo "### End: Installing Server Manager Monitoring"
-  echo "IMPORTANT: CONFIGURE /ETC/COBBLER/DHCP.TEMPLATE, NAMED.TEMPLATE, SETTINGS TO BRING UP SERVER MANAGER."
-  echo "If your install has failed, please make sure the /etc/apt/sources.list file reflects the default sources.list for your version of Ubuntu."
-  echo "Sample sources.list files are available at /opt/contrail/contrail_server_manager/."
+  if [ "$SMLITE" != "" ]; then
+     :
+  else
+     echo "IMPORTANT: CONFIGURE /ETC/COBBLER/DHCP.TEMPLATE, NAMED.TEMPLATE, SETTINGS TO BRING UP SERVER MANAGER."
+     echo "If your install has failed, please make sure the /etc/apt/sources.list file reflects the default sources.list for your version of Ubuntu."
+     echo "Sample sources.list files are available at /opt/contrail/contrail_server_manager/."
+  fi
   echo "Install log is at /var/log/contrail/install_logs/"
 fi
-
