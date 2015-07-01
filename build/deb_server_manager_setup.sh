@@ -224,7 +224,8 @@ function passenger_install_14()
   # passenger version is hard coded at puppetmasterd, hence the following change
   rel=`passenger --version`
   rel=( $rel )
-  sed -i "s|LoadModule passenger_module /var/lib/gems/1.8/gems/passenger-4.0.53/buildout/apache2/mod_passenger.so|LoadModule passenger_module /opt/contrail/contrail_server_manager/mod_passenger.so|g" /etc/apache2/sites-available/puppetmaster.conf
+  sed -i "s|LoadModule passenger_module /var/lib/gems/1.8/gems/passenger-4.0.53/buildout/apache2/mod_passenger.so|LoadModule passenger_module /var/lib/gems/1.9.1/gems/passenger-${rel[3]\
+}/buildout/apache2/mod_passenger.so|g" /etc/apache2/sites-available/puppetmaster.conf
   sed -i "s|PassengerRoot /var/lib/gems/1.8/gems/passenger-4.0.53|PassengerRoot /var/lib/gems/1.9.1/gems/passenger-${rel[3]}|g" /etc/apache2/sites-available/puppetmaster.conf
   sed -i "s|PassengerDefaultRuby /usr/bin/ruby1.8|PassengerDefaultRuby /usr/bin/ruby1.9.1|g" /etc/apache2/sites-available/puppetmaster.conf
   a2ensite puppetmaster
@@ -256,6 +257,17 @@ function passenger_install_14()
   echo "$space### End: Install Passenger"
 }
 
+function passenger_and_agent_12()
+{
+   rel=`passenger --version`
+   rel=( $rel )
+   mkdir -p /var/lib/gems/1.8/gems/passenger-${rel[3]}/buildout
+   mkdir -p /var/lib/gems/1.8/gems/passenger-${rel[3]}/buildout/support-binaries
+   cp ./PassengerAgent_5_0_11_os_12 /var/lib/gems/1.8/gems/passenger-${rel[3]}/buildout/support-binaries/PassengerAgent
+   mkdir -p /var/lib/gems/1.8/gems/passenger-${rel[3]}/buildout/apache2
+   cp ./mod_passenger_5_0_11_os_12.so -p /var/lib/gems/1.8/gems/passenger-${rel[3]}/buildout/apache2/mod_passenger.so
+}
+
 function passenger_install_12()
 {
     echo "$space### Begin: Install Passenger"
@@ -263,7 +275,8 @@ function passenger_install_12()
     a2enmod ssl
     a2enmod headers
     a2enmod version
-    gem install rack passenger
+    gem install rack 
+    gem install passenger --version 5.0.11
     #passenger-install-apache2-module --auto --languages 'ruby,python,nodejs' &> /dev/null
     mkdir -p /usr/share/puppet/rack/puppetmasterd
     mkdir -p /usr/share/puppet/rack/puppetmasterd/public /usr/share/puppet/rack/puppetmasterd/tmp
@@ -276,8 +289,10 @@ function passenger_install_12()
     # passenger version is hard coded at puppetmasterd, hence the following change
     rel=`passenger --version`
     rel=( $rel )
-    sed -i "s|LoadModule passenger_module /var/lib/gems/1.8/gems/passenger-4.0.53/buildout/apache2/mod_passenger.so|LoadModule passenger_module /opt/contrail/contrail_server_manager/mod_passenger.so|g" /etc/apache2/sites-available/puppetmasterd
+    sed -i "s|LoadModule passenger_module /var/lib/gems/1.8/gems/passenger-4.0.53/buildout/apache2/mod_passenger.so|LoadModule passenger_module /var/lib/gems/1.8/gems/passenger-${rel[3]\
+}/buildout/apache2/mod_passenger.so|g" /etc/apache2/sites-available/puppetmasterd
     sed -i "s|PassengerRoot /var/lib/gems/1.8/gems/passenger-4.0.53|PassengerRoot /var/lib/gems/1.8/gems/passenger-${rel[3]}|g" /etc/apache2/sites-available/puppetmasterd
+    passenger_and_agent_12
     a2ensite puppetmasterd
     host=`echo $HOSTNAME | awk '{print tolower($0)}'`
     if [ "$DOMAIN" != "" ]; then
