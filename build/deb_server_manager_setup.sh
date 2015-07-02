@@ -212,7 +212,7 @@ function passenger_install_14()
     rm /etc/apt/preferences.d/00-puppet.pref
   fi
   echo -e "# /etc/apt/preferences.d/00-puppet.pref\nPackage: puppet puppet-common puppetmaster-passenger\nPin: version 3.7.3\nPin-Priority: 501" >> /etc/apt/preferences.d/00-puppet.pref
-  # passenger-install-apache2-module --auto --languages 'ruby,python,nodejs' &> /dev/null
+  passenger-install-apache2-module --auto --languages 'ruby,python,nodejs' &> /dev/null
   mkdir -p /usr/share/puppet/rack/puppetmasterd
   mkdir -p /usr/share/puppet/rack/puppetmasterd/public /usr/share/puppet/rack/puppetmasterd/tmp
   cp /usr/share/puppet/ext/rack/config.ru /usr/share/puppet/rack/puppetmasterd/
@@ -263,9 +263,9 @@ function passenger_and_agent_12()
    rel=( $rel )
    mkdir -p /var/lib/gems/1.8/gems/passenger-${rel[3]}/buildout
    mkdir -p /var/lib/gems/1.8/gems/passenger-${rel[3]}/buildout/support-binaries
-   cp ./PassengerAgent_5_0_11_os_12 /var/lib/gems/1.8/gems/passenger-${rel[3]}/buildout/support-binaries/PassengerAgent
+   cp ./PassengerAgent_5_0_11 /var/lib/gems/1.8/gems/passenger-${rel[3]}/buildout/support-binaries/PassengerAgent
    mkdir -p /var/lib/gems/1.8/gems/passenger-${rel[3]}/buildout/apache2
-   cp ./mod_passenger_5_0_11_os_12.so -p /var/lib/gems/1.8/gems/passenger-${rel[3]}/buildout/apache2/mod_passenger.so
+   cp ./mod_passenger_5_0_11.so /var/lib/gems/1.8/gems/passenger-${rel[3]}/buildout/apache2/mod_passenger.so
 }
 
 function passenger_install_12()
