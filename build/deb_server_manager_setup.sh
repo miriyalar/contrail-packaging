@@ -505,6 +505,15 @@ if [ "$SM" != "" ]; then
   fi
   sed -i "s/listen_ip_addr = .*/listen_ip_addr = $HOSTIP/g" /opt/contrail/server_manager/sm-config.ini
 
+  if [ "$SMLITE" != "" ]; then
+     grep "cobbler * = " /opt/contrail/server_manager/sm-config.ini
+     if [ $? == 0 ]; then
+        sed -i "s/cobbler * = .*/cobbler                  = false/g" /opt/contrail/server_manager/sm-config.ini
+     else
+        sed -i "/listen_port*/acobbler                  = false" /opt/contrail/server_manager/sm-config.ini
+     fi
+  fi
+
   # Adding server and Public DNS to /etc/resolv.conf if not present
   grep "nameserver $LOCALHOSTIP" /etc/resolv.conf
   if [ $? != 0 ]; then
