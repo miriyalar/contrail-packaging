@@ -129,6 +129,12 @@ if [ "$ALL" != "" ]; then
    rm temp.txt
 fi
 
+#scan pkgs in local repo and create Packages.gz
+cd /opt/contrail/contrail_server_manager
+apt-get -y install dpkg-dev
+dpkg-scanpackages . /dev/null | gzip -9c > Packages.gz
+apt-get update --yes
+
 cd /etc/apt/
 # create repo with only local packages
 datetime_string=`date +%Y_%m_%d__%H_%M_%S`
@@ -153,11 +159,6 @@ if [ "$?" != "0" ]; then
     echo "$apt_auth" >> apt.conf
 fi
 
-#scan pkgs in local repo and create Packages.gz
-cd /opt/contrail/contrail_server_manager
-apt-get -y install dpkg-dev
-dpkg-scanpackages . /dev/null | gzip -9c > Packages.gz
-apt-get update --yes
 
 apt-get -y install gdebi-core
 
@@ -571,7 +572,7 @@ if [ "$SMCLIENT" != "" ]; then
   echo "### End: Installing Server Manager Client"
 fi
 
-if [ "$WEBUI" != "" && "$NOWEBUI" == "" ]; then
+if [ "$WEBUI" != "" ] && [ "$NOWEBUI" == "" ]; then
   echo "### Begin: Installing Server Manager Web UI"
   echo "WEBUI is $WEBUI"
   # install webui
