@@ -474,6 +474,8 @@ if [ "$SM" != "" ]; then
        if [ ${rel[1]} != "14.04"  ]; then
 	   a2enmod version
        fi
+       apt-get -y install python-pip
+       pip install pyyaml
     else
        save_cobbler_state
        cv=`cobbler --version`
@@ -490,7 +492,6 @@ if [ "$SM" != "" ]; then
     if [ -e /etc/apache2/sites-enabled/puppetmasterd ]; then
        rm /etc/apache2/sites-enabled/puppetmasterd
     fi
-    pip install pyyaml
     gdebi -n $SM
     if [ "$SMLITE" != "" ]; then
        :
@@ -499,11 +500,11 @@ if [ "$SM" != "" ]; then
     fi
   else
     if [ "$SMLITE" != "" ]; then
-       :
+       apt-get -y install python-pip
+       pip install pyyaml
     else
        install_cobbler
     fi
-    pip install pyyaml
     gdebi -n $SM
   fi
 
@@ -701,4 +702,11 @@ if [ "$SMMON" != "" ]; then
      echo "Sample sources.list files are available at /opt/contrail/contrail_server_manager/."
   fi
   echo "Install log is at /var/log/contrail/install_logs/"
+fi
+
+if [ "$SMLITE" != "" ] && [ "$SM" != "" ]; then
+   service contrail-server-manager restart
+   sleep 5
+   service contrail-server-manager status
+   echo 
 fi
