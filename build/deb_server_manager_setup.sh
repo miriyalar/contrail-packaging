@@ -129,6 +129,12 @@ if [ "$ALL" != "" ]; then
    rm temp.txt
 fi
 
+#scan pkgs in local repo and create Packages.gz
+cd /opt/contrail/contrail_server_manager
+apt-get -y install dpkg-dev
+dpkg-scanpackages . /dev/null | gzip -9c > Packages.gz
+apt-get update --yes
+
 cd /etc/apt/
 # create repo with only local packages
 datetime_string=`date +%Y_%m_%d__%H_%M_%S`
@@ -153,11 +159,6 @@ if [ "$?" != "0" ]; then
     echo "$apt_auth" >> apt.conf
 fi
 
-#scan pkgs in local repo and create Packages.gz
-cd /opt/contrail/contrail_server_manager
-apt-get -y install dpkg-dev
-dpkg-scanpackages . /dev/null | gzip -9c > Packages.gz
-apt-get update --yes
 
 apt-get -y install gdebi-core
 
@@ -212,7 +213,7 @@ function passenger_install_14()
     rm /etc/apt/preferences.d/00-puppet.pref
   fi
   echo -e "# /etc/apt/preferences.d/00-puppet.pref\nPackage: puppet puppet-common puppetmaster-passenger\nPin: version 3.7.3\nPin-Priority: 501" >> /etc/apt/preferences.d/00-puppet.pref
-  # passenger-install-apache2-module --auto --languages 'ruby,python,nodejs' &> /dev/null
+  passenger-install-apache2-module --auto --languages 'ruby,python,nodejs' &> /dev/null
   mkdir -p /usr/share/puppet/rack/puppetmasterd
   mkdir -p /usr/share/puppet/rack/puppetmasterd/public /usr/share/puppet/rack/puppetmasterd/tmp
   cp /usr/share/puppet/ext/rack/config.ru /usr/share/puppet/rack/puppetmasterd/
@@ -224,7 +225,8 @@ function passenger_install_14()
   # passenger version is hard coded at puppetmasterd, hence the following change
   rel=`passenger --version`
   rel=( $rel )
-  sed -i "s|LoadModule passenger_module /var/lib/gems/1.8/gems/passenger-4.0.53/buildout/apache2/mod_passenger.so|LoadModule passenger_module /opt/contrail/contrail_server_manager/mod_passenger.so|g" /etc/apache2/sites-available/puppetmaster.conf
+  sed -i "s|LoadModule passenger_module /var/lib/gems/1.8/gems/passenger-4.0.53/buildout/apache2/mod_passenger.so|LoadModule passenger_module /var/lib/gems/1.9.1/gems/passenger-${rel[3]\
+}/buildout/apache2/mod_passenger.so|g" /etc/apache2/sites-available/puppetmaster.conf
   sed -i "s|PassengerRoot /var/lib/gems/1.8/gems/passenger-4.0.53|PassengerRoot /var/lib/gems/1.9.1/gems/passenger-${rel[3]}|g" /etc/apache2/sites-available/puppetmaster.conf
   sed -i "s|PassengerDefaultRuby /usr/bin/ruby1.8|PassengerDefaultRuby /usr/bin/ruby1.9.1|g" /etc/apache2/sites-available/puppetmaster.conf
   a2ensite puppetmaster
@@ -256,6 +258,17 @@ function passenger_install_14()
   echo "$space### End: Install Passenger"
 }
 
+function passenger_and_agent_12()
+{
+   rel=`passenger --version`
+   rel=( $rel )
+   mkdir -p /var/lib/gems/1.8/gems/passenger-${rel[3]}/buildout
+   mkdir -p /var/lib/gems/1.8/gems/passenger-${rel[3]}/buildout/support-binaries
+   cp ./PassengerAgent_5_0_11 /var/lib/gems/1.8/gems/passenger-${rel[3]}/buildout/support-binaries/PassengerAgent
+   mkdir -p /var/lib/gems/1.8/gems/passenger-${rel[3]}/buildout/apache2
+   cp ./mod_passenger_5_0_11.so /var/lib/gems/1.8/gems/passenger-${rel[3]}/buildout/apache2/mod_passenger.so
+}
+
 function passenger_install_12()
 {
     echo "$space### Begin: Install Passenger"
@@ -263,7 +276,8 @@ function passenger_install_12()
     a2enmod ssl
     a2enmod headers
     a2enmod version
-    gem install rack passenger
+    gem install rack 
+    gem install passenger --version 5.0.11
     #passenger-install-apache2-module --auto --languages 'ruby,python,nodejs' &> /dev/null
     mkdir -p /usr/share/puppet/rack/puppetmasterd
     mkdir -p /usr/share/puppet/rack/puppetmasterd/public /usr/share/puppet/rack/puppetmasterd/tmp
@@ -276,8 +290,10 @@ function passenger_install_12()
     # passenger version is hard coded at puppetmasterd, hence the following change
     rel=`passenger --version`
     rel=( $rel )
-    sed -i "s|LoadModule passenger_module /var/lib/gems/1.8/gems/passenger-4.0.53/buildout/apache2/mod_passenger.so|LoadModule passenger_module /opt/contrail/contrail_server_manager/mod_passenger.so|g" /etc/apache2/sites-available/puppetmasterd
+    sed -i "s|LoadModule passenger_module /var/lib/gems/1.8/gems/passenger-4.0.53/buildout/apache2/mod_passenger.so|LoadModule passenger_module /var/lib/gems/1.8/gems/passenger-${rel[3]\
+}/buildout/apache2/mod_passenger.so|g" /etc/apache2/sites-available/puppetmasterd
     sed -i "s|PassengerRoot /var/lib/gems/1.8/gems/passenger-4.0.53|PassengerRoot /var/lib/gems/1.8/gems/passenger-${rel[3]}|g" /etc/apache2/sites-available/puppetmasterd
+    passenger_and_agent_12
     a2ensite puppetmasterd
     host=`echo $HOSTNAME | awk '{print tolower($0)}'`
     if [ "$DOMAIN" != "" ]; then
@@ -405,6 +421,12 @@ function bind_logging()
 };" >> /etc/bind/named.conf
 }
 
+function install_puppet_agent()
+{
+  apt-get -y install puppet="3.7.3-1puppetlabs1"
+  sed -i "s/START=no/START=yes/g" /etc/default/puppet
+  service puppet start
+}
 
 if [ "$SM" != "" ]; then
   echo "### Begin: Installing Server Manager"
@@ -452,6 +474,8 @@ if [ "$SM" != "" ]; then
        if [ ${rel[1]} != "14.04"  ]; then
 	   a2enmod version
        fi
+       apt-get -y install python-pip
+       pip install pyyaml
     else
        save_cobbler_state
        cv=`cobbler --version`
@@ -468,7 +492,6 @@ if [ "$SM" != "" ]; then
     if [ -e /etc/apache2/sites-enabled/puppetmasterd ]; then
        rm /etc/apache2/sites-enabled/puppetmasterd
     fi
-    pip install pyyaml
     gdebi -n $SM
     if [ "$SMLITE" != "" ]; then
        :
@@ -477,11 +500,11 @@ if [ "$SM" != "" ]; then
     fi
   else
     if [ "$SMLITE" != "" ]; then
-       :
+       apt-get -y install python-pip
+       pip install pyyaml
     else
        install_cobbler
     fi
-    pip install pyyaml
     gdebi -n $SM
   fi
 
@@ -489,6 +512,15 @@ if [ "$SM" != "" ]; then
      HOSTIP=$LOCALHOSTIP
   fi
   sed -i "s/listen_ip_addr = .*/listen_ip_addr = $HOSTIP/g" /opt/contrail/server_manager/sm-config.ini
+
+  if [ "$SMLITE" != "" ]; then
+     grep "cobbler * = " /opt/contrail/server_manager/sm-config.ini
+     if [ $? == 0 ]; then
+        sed -i "s/cobbler * = .*/cobbler                  = false/g" /opt/contrail/server_manager/sm-config.ini
+     else
+        sed -i "/listen_port*/acobbler                  = false" /opt/contrail/server_manager/sm-config.ini
+     fi
+  fi
 
   # Adding server and Public DNS to /etc/resolv.conf if not present
   grep "nameserver $LOCALHOSTIP" /etc/resolv.conf
@@ -512,6 +544,7 @@ if [ "$SM" != "" ]; then
     passenger_install
   fi
 
+  # Bind config modification
   if [ "$SMLITE" != "" ]; then
      :
   else
@@ -524,6 +557,10 @@ if [ "$SM" != "" ]; then
 	   sed -i "s/manage_forward_zones:.*/manage_forward_zones: ['$DOMAIN']/g" /etc/cobbler/settings
 	fi
      fi
+  fi
+  # Install puppet agent
+  if [ "$SMLITE" != "" ]; then
+     install_puppet_agent
   fi
   echo "### End: Installing Server Manager"
   if [ "$SMLITE" != "" ]; then
@@ -547,7 +584,7 @@ if [ "$SMCLIENT" != "" ]; then
   echo "### End: Installing Server Manager Client"
 fi
 
-if [ "$WEBUI" != "" && "$NOWEBUI" == "" ]; then
+if [ "$WEBUI" != "" ] && [ "$NOWEBUI" == "" ]; then
   echo "### Begin: Installing Server Manager Web UI"
   echo "WEBUI is $WEBUI"
   # install webui
@@ -665,4 +702,11 @@ if [ "$SMMON" != "" ]; then
      echo "Sample sources.list files are available at /opt/contrail/contrail_server_manager/."
   fi
   echo "Install log is at /var/log/contrail/install_logs/"
+fi
+
+if [ "$SMLITE" != "" ] && [ "$SM" != "" ]; then
+   service contrail-server-manager restart
+   sleep 5
+   service contrail-server-manager status
+   echo 
 fi
