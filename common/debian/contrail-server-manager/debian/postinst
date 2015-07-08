@@ -29,6 +29,7 @@ cp /etc/contrail_smgr/cobbler/pxesystem_esxi.template /etc/cobbler/pxe
 #cp /etc/contrail_smgr/cobbler/dhcp.template.u /etc/cobbler/dhcp.template
 cp /etc/contrail_smgr/cobbler/named.template.u /etc/cobbler/named.template
 cp /etc/contrail_smgr/cobbler/named.conf.options.u /etc/bind/named.conf.options
+cp /etc/contrail_smgr/smgr.conf /etc/apache2/sites-available/
 
 mkdir -p /var/www/html
 mkdir -p /var/www/html/kickstarts
