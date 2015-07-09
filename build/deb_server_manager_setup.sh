@@ -421,13 +421,6 @@ function bind_logging()
 };" >> /etc/bind/named.conf
 }
 
-function install_puppet_agent()
-{
-  apt-get -y install puppet="3.7.3-1puppetlabs1"
-  sed -i "s/START=no/START=yes/g" /etc/default/puppet
-  service puppet start
-}
-
 if [ "$SM" != "" ]; then
   echo "### Begin: Installing Server Manager"
   echo "SM is $SM"
@@ -557,10 +550,6 @@ if [ "$SM" != "" ]; then
 	   sed -i "s/manage_forward_zones:.*/manage_forward_zones: ['$DOMAIN']/g" /etc/cobbler/settings
 	fi
      fi
-  fi
-  # Install puppet agent
-  if [ "$SMLITE" != "" ]; then
-     install_puppet_agent
   fi
   echo "### End: Installing Server Manager"
   if [ "$SMLITE" != "" ]; then
