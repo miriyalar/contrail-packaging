@@ -12,6 +12,7 @@ SM=""
 SMCLIENT=""
 HOSTIP=""
 SMMON=""
+NOSMMON=""
 WEBUI=""
 NOWEBUI=""
 WEBCORE=""
@@ -33,6 +34,7 @@ function usage()
     echo "\t-h --help"
     echo "\t--smlite"
     echo "\t--nowebui"
+    echo "\t--nosm-mon"
     echo "\t--sm=$SM"
     echo "\t--sm-client=$SMCLIENT"
     echo "\t--webui=$WEBUI"
@@ -65,6 +67,9 @@ while [ "$1" != "" ]; do
 	    ;;
 	--nowebui)
 	    NOWEBUI="nowebui"
+	    ;;
+	--nosm-mon)
+	    NOSMMON="nosm-mon"
 	    ;;
         --sm)
             SM=$VALUE
@@ -109,7 +114,7 @@ if [ "$ALL" != "" ]; then
      if [[ "$line" == *client* ]];
      then
        SMCLIENT=$line
-     elif [[ "$line" == *monitoring* ]];
+     elif [[ "$line" == *monitoring* ]] && [ "$NOSMMON" == "" ];
      then
        SMMON=$line
      elif [[ "$line" == *web-server-manager* ]] && [ "$NOWEBUI" == "" ];
@@ -128,6 +133,7 @@ if [ "$ALL" != "" ]; then
    done < temp.txt
    rm temp.txt
 fi
+
 
 #scan pkgs in local repo and create Packages.gz
 cd /opt/contrail/contrail_server_manager
@@ -469,6 +475,7 @@ if [ "$SM" != "" ]; then
        fi
        apt-get -y install python-pip
        pip install pyyaml
+       apt-get -y install libnss3-1d
     else
        save_cobbler_state
        cv=`cobbler --version`
@@ -495,6 +502,7 @@ if [ "$SM" != "" ]; then
     if [ "$SMLITE" != "" ]; then
        apt-get -y install python-pip
        pip install pyyaml
+       apt-get -y install libnss3-1d
     else
        install_cobbler
     fi
