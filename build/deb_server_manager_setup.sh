@@ -235,7 +235,7 @@ function passenger_install_14()
 }/buildout/apache2/mod_passenger.so|g" /etc/apache2/sites-available/puppetmaster.conf
   sed -i "s|PassengerRoot /var/lib/gems/1.8/gems/passenger-4.0.53|PassengerRoot /var/lib/gems/1.9.1/gems/passenger-${rel[3]}|g" /etc/apache2/sites-available/puppetmaster.conf
   sed -i "s|PassengerDefaultRuby /usr/bin/ruby1.8|PassengerDefaultRuby /usr/bin/ruby1.9.1|g" /etc/apache2/sites-available/puppetmaster.conf
-  a2ensite puppetmaster
+  a2ensite puppetmaster smgr.conf
   host=`echo $HOSTNAME | awk '{print tolower($0)}'`
   if [ "$DOMAIN" != "" ]; then
     output="$(find /var/lib/puppet/ssl/certs/ -name "${host}.${DOMAIN}*.pem")"
@@ -300,7 +300,7 @@ function passenger_install_12()
 }/buildout/apache2/mod_passenger.so|g" /etc/apache2/sites-available/puppetmasterd
     sed -i "s|PassengerRoot /var/lib/gems/1.8/gems/passenger-4.0.53|PassengerRoot /var/lib/gems/1.8/gems/passenger-${rel[3]}|g" /etc/apache2/sites-available/puppetmasterd
     passenger_and_agent_12
-    a2ensite puppetmasterd
+    a2ensite puppetmasterd smgr.conf
     host=`echo $HOSTNAME | awk '{print tolower($0)}'`
     if [ "$DOMAIN" != "" ]; then
       output="$(find /var/lib/puppet/ssl/certs/ -name "${host}.${DOMAIN}*.pem")"
