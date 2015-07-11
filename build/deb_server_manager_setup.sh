@@ -701,6 +701,15 @@ if [ "$SMMON" != "" ]; then
   echo "Install log is at /var/log/contrail/install_logs/"
 fi
 
+if [ "$SM" != "" ] && [ "$NOSMMON" != "" ]; then
+   grep "monitoring * = " /opt/contrail/server_manager/sm-config.ini
+   if [ $? == 0 ]; then
+      sed -i "s/monitoring * = .*/monitoring               = false/g" /opt/contrail/server_manager/sm-config.ini
+   else
+      sed -i "/listen_port*/amonitoring               = false" /opt/contrail/server_manager/sm-config.ini
+   fi
+fi
+
 if [ "$SMLITE" != "" ] && [ "$SM" != "" ]; then
    service contrail-server-manager restart
    sleep 5
