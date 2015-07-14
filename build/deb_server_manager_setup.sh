@@ -1,5 +1,6 @@
 #!/bin/bash
 set -x
+start_time=$(date +"%s")
 datetime_string=`date +%Y_%m_%d__%H_%M_%S`
 mkdir -p /var/log/contrail/install_logs/
 exec > /var/log/contrail/install_logs/install_$datetime_string.log
@@ -427,6 +428,11 @@ function bind_logging()
 };" >> /etc/bind/named.conf
 }
 
+function remove_contrail_installer_repo()
+{
+  sed -i "s|deb file:/opt/contrail/contrail_server_manager.*||g" /etc/apt/sources.list
+}
+
 if [ "$SM" != "" ]; then
   echo "### Begin: Installing Server Manager"
   echo "SM is $SM"
@@ -715,4 +721,9 @@ if [ "$SMLITE" != "" ] && [ "$SM" != "" ]; then
    sleep 5
    service contrail-server-manager status
    echo 
+   remove_contrail_installer_repo
 fi
+
+end_time=$(date +"%s")
+diff=$(($end_time-$start_time))
+echo "SM installation took $(($diff / 60)) minutes and $(($diff % 60)) seconds."
