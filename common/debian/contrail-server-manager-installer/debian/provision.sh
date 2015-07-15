@@ -91,7 +91,7 @@ function cleanup_puppet_agent()
 
 # Copy sources list from the installer repo
 if [ "$SOURCES_LIST" != "" ]; then
-   echo "Use the sources.list from installer package"
+   echo "--> Use the sources.list from installer package"
    setup_source_list_for_internet
 fi
 
@@ -102,8 +102,10 @@ fi
 
 # Install sever manager 
 if [ "$INSTALL_SM_LITE" != "" ]; then
-    echo "--> Install server manager lite"
-   /opt/contrail/contrail_server_manager/setup.sh --all --smlite --nowebui --nosm-mon
+   echo "--> Install server manager lite"
+   pushd /opt/contrail/contrail_server_manager
+   ./setup.sh --all --smlite --nowebui --nosm-mon
+   popd
 fi 
 
 echo "--> Convert testbed.py to server manager entities"
