@@ -85,7 +85,9 @@ function setup_source_list_for_internet()
 
 function cleanup_puppet_agent()
 {
+   set +e
    apt-get -y --purge autoremove puppet puppet-common hiera
+   set -e
    rm -rf /etc/puppet /var/lib/puppet
 }
 
