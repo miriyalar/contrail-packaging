@@ -105,7 +105,7 @@ service apache2 restart
 service xinetd restart
 #service cobblerd restart
 
-POSTFIX_CHECK=$(dpkg -l \grep postfix)
+POSTFIX_CHECK=$(dpkg -l | grep postfix)
 if [ "$INSTALLED" != "" ]; then
     service postfix stop
 fi
