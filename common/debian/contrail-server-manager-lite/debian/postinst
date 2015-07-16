@@ -105,10 +105,12 @@ service apache2 restart
 service xinetd restart
 #service cobblerd restart
 
+set +e
 POSTFIX_CHECK=$(dpkg -l | grep postfix)
 if [ "$INSTALLED" != "" ]; then
     service postfix stop
 fi
+set -e
 service sendmail restart
 
 #chkconfig apache2 on
