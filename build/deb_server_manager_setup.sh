@@ -592,6 +592,7 @@ if [ "$WEBUI" != "" ] && [ "$NOWEBUI" == "" ]; then
   echo "WEBUI is $WEBUI"
   # install webui
   if [ $WEBCORE!="" ]; then
+    apt-get -y install python-software-properties
     add-apt-repository ppa:rwky/redis --yes
     apt-get update --yes
     gdebi -n $WEBCORE
