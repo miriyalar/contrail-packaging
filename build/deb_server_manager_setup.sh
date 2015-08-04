@@ -257,7 +257,6 @@ function passenger_install_14()
     sed -i "s|ErrorLog .*|ErrorLog /var/log/apache2/${host}_ssl_error.log|g" /etc/apache2/sites-available/puppetmaster.conf
     sed -i "s|CustomLog .*|CustomLog /var/log/apache2/${host}_ssl_access.log combined|g" /etc/apache2/sites-available/puppetmaster.conf
   fi
-  a2dismod mpm_event
   /etc/init.d/puppetmaster start
   /etc/init.d/puppetmaster stop
   /etc/init.d/apache2 restart
