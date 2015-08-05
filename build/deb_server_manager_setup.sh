@@ -135,6 +135,16 @@ if [ "$ALL" != "" ]; then
    rm temp.txt
 fi
 
+rel=`lsb_release -r`
+rel=( $rel )
+cp /etc/apt/sources.list /etc/apt/sources.list.original
+if [ ${rel[1]} == "14.04"  ]; then
+  cp /opt/contrail/contrail_server_manager/ubuntu_14_04_1_sources.list /etc/apt/sources.list
+else
+  cp /opt/contrail/contrail_server_manager/ubuntu_12_04_3_sources.list /etc/apt/sources.list
+fi
+
+apt-get update
 
 #scan pkgs in local repo and create Packages.gz
 cd /opt/contrail/contrail_server_manager
@@ -438,25 +448,45 @@ if [ "$SM" != "" ]; then
   echo "SM is $SM"
   rel=`lsb_release -r`
   rel=( $rel )
-  if [ ${rel[1]} == "14.04"  ]; then
-    wget https://apt.puppetlabs.com/puppetlabs-release-trusty.deb
-    gdebi -n puppetlabs-release-trusty.deb
-    apt-get update --yes
-    apt-get -y install puppet-common="3.7.3-1puppetlabs1"
-    apt-get -y install puppetmaster-common="3.7.3-1puppetlabs1"
-    apt-get -y install puppetmaster="3.7.3-1puppetlabs1"
-    service puppetmaster stop
-    service apache2 start
-    gdebi -n nodejs_0.8.15-1contrail1_amd64.deb
-  else
-    wget https://apt.puppetlabs.com/puppetlabs-release-precise.deb
-    gdebi -n puppetlabs-release-precise.deb
-    apt-get update --yes
-    apt-get -y install puppet-common="3.7.3-1puppetlabs1"
-    apt-get -y install puppetmaster-common="3.7.3-1puppetlabs1"
-    apt-get -y install puppetmaster="3.7.3-1puppetlabs1"
-    gdebi -n nodejs_0.8.15-1contrail1_amd64.deb
+
+  if [ "$HOSTIP" == "" ]; then
+     HOSTIP=$LOCALHOSTIP
   fi
+  puppet_list_file="/etc/apt/sources.list.d/puppet.list"
+  passenger_list_file="/etc/apt/sources.list.d/passenger.list"
+  dist='precise'
+  if [ ${rel[1]} == "14.04"  ]; then
+      dist='trusty'
+  fi
+  # Add puppet sources
+  if [ ! -f "$puppet_list_file" ]; then
+      echo "deb http://apt.puppetlabs.com $dist main" >> $puppet_list_file
+      echo "deb-src http://apt.puppetlabs.com $dist main" >> $puppet_list_file
+      echo "deb http://apt.puppetlabs.com $dist dependencies" >> $puppet_list_file
+      echo "deb-src http://apt.puppetlabs.com $dist dependencies" >> $puppet_list_file
+  fi
+
+  # Add passenger's sources
+  if [ ! -f "$passenger_list_file" ]; then
+      echo "deb https://oss-binaries.phusionpassenger.com/apt/passenger $dist main" >> $passenger_list_file
+  fi
+  apt-get update
+
+  # Install puppet packages
+  mv /var/lib/puppet/ssl /var/lib/puppet/ssl_agent
+  apt-get -y install puppetmaster-common="3.7.3-1puppetlabs1"
+  apt-get -y install nodejs>=0.8.15-1contrail1
+  puppet master --configprint ssldir | xargs rm -rf
+  puppet cert list -a
+  host=`echo $HOSTNAME | awk '{print tolower($0)}'`
+  if [ "$DOMAIN" != "" ]; then
+    puppet cert generate $host.$DOMAIN
+  else
+    puppet cert generate $host
+  fi
+
+  apt-get -y install puppetmaster-passenger="3.7.3-1puppetlabs1"
+  service apache2 restart
 
   if [ -e /etc/init.d/apparmor ]; then
     /etc/init.d/apparmor stop
@@ -545,10 +575,6 @@ if [ "$SM" != "" ]; then
      if [ $? != 0 ]; then
 	echo "bind_master: $LOCALHOSTIP" >> /etc/cobbler/settings
      fi
-  fi
-
-  if [ "$PASSENGER" != "no"  ]; then
-    passenger_install
   fi
 
   # Bind config modification
@@ -724,6 +750,9 @@ if [ "$SMLITE" != "" ] && [ "$SM" != "" ]; then
    echo 
    remove_contrail_installer_repo
 fi
+
+cp /etc/apt/sources.list.original /etc/apt/sources.list
+apt-get update &> /dev/null
 
 end_time=$(date +"%s")
 diff=$(($end_time-$start_time))
