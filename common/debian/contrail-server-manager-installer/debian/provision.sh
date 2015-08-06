@@ -132,4 +132,4 @@ server-manager provision -F --cluster_id cluster ${CONTRAIL_PKG_ID}
 end_time=$(date +"%s")
 diff=$(($end_time-$start_time))
 echo "--> Provisioning is issued, and took $(($diff / 60)) minutes and $(($diff % 60)) seconds."
-echo "--> Check provisioning status using provision_status.sh"
+echo "--> Check provisioning status using /opt/contrail/contrail_server_manager/provision_status.sh"
