@@ -1,5 +1,7 @@
 #!/bin/bash
 set -x
+set -e
+
 start_time=$(date +"%s")
 datetime_string=`date +%Y_%m_%d__%H_%M_%S`
 mkdir -p /var/log/contrail/install_logs/
@@ -159,7 +161,9 @@ cp sources.list sources.list.$datetime_string
 echo "deb file:/opt/contrail/contrail_server_manager ./" > local_repo
 
 #modify /etc/apt/soruces.list/ to add local repo on the top
-grep "deb file:/opt/contrail/contrail_server_manager ./" sources.list
+set +e
+grep "^deb file:/opt/contrail/contrail_server_manager ./" sources.list
+set -e
 
 if [ $? != 0 ]; then
      cat local_repo sources.list > new_sources.list
@@ -473,8 +477,10 @@ if [ "$SM" != "" ]; then
   apt-get update
 
   # Install puppet packages
-  mv /var/lib/puppet/ssl /var/lib/puppet/ssl_agent
-  apt-get -y install puppetmaster-common="3.7.3-1puppetlabs1"
+  if [ -d /var/lib/puppet/ssl ]; then
+      mv /var/lib/puppet/ssl /var/lib/puppet/ssl_$(date +"%d_%m_%y_%H_%M_%S")
+  fi
+  apt-get -y install puppet-common="3.7.3-1puppetlabs1" puppetmaster-common="3.7.3-1puppetlabs1"
   apt-get -y install nodejs>=0.8.15-1contrail1
   puppet master --configprint ssldir | xargs rm -rf
   puppet cert list -a
@@ -486,6 +492,8 @@ if [ "$SM" != "" ]; then
   fi
 
   apt-get -y install puppetmaster-passenger="3.7.3-1puppetlabs1"
+  a2dismod mpm_event
+  a2enmod mpm_worker
   service apache2 restart
 
   if [ -e /etc/init.d/apparmor ]; then
@@ -497,11 +505,14 @@ if [ "$SM" != "" ]; then
   apt-get -y install software-properties-common
   # Check if this is an upgrade
 
+  set +e
   if [ "$SMLITE" != "" ]; then
       check=`dpkg --list | grep "contrail-server-manager-lite "`
   else
       check=`dpkg --list | grep "contrail-server-manager "`
   fi
+  set -e
+
   if [ "$check" != ""  ]; then
     # Upgrade
     if [ "$SMLITE" != "" ]; then
@@ -528,7 +539,12 @@ if [ "$SM" != "" ]; then
     if [ -e /etc/apache2/sites-enabled/puppetmasterd ]; then
        rm /etc/apache2/sites-enabled/puppetmasterd
     fi
+
+    # Install server manager package
     gdebi -n $SM
+    a2ensite smgr.conf
+    service apache2 restart
+
     if [ "$SMLITE" != "" ]; then
        :
     else
@@ -543,6 +559,8 @@ if [ "$SM" != "" ]; then
        install_cobbler
     fi
     gdebi -n $SM
+    a2ensite smgr.conf
+    service apache2 restart
   fi
 
   if [ "$HOSTIP" == "" ]; then
@@ -560,7 +578,9 @@ if [ "$SM" != "" ]; then
   fi
 
   # Adding server and Public DNS to /etc/resolv.conf if not present
+  set +e
   grep "nameserver $LOCALHOSTIP" /etc/resolv.conf
+  set -e
   if [ $? != 0 ]; then
       echo "nameserver $LOCALHOSTIP" >> /etc/resolv.conf
   fi
