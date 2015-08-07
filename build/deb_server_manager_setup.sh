@@ -5,7 +5,8 @@ set -e
 start_time=$(date +"%s")
 datetime_string=`date +%Y_%m_%d__%H_%M_%S`
 mkdir -p /var/log/contrail/install_logs/
-exec > /var/log/contrail/install_logs/install_$datetime_string.log
+log_file=/var/log/contrail/install_logs/install_$datetime_string.log
+exec &> >(tee -a "$log_file")
 # copy files over
 
 space="    "
@@ -482,8 +483,8 @@ if [ "$SM" != "" ]; then
   if [ -d /var/lib/puppet/ssl ]; then
       mv /var/lib/puppet/ssl /var/lib/puppet/ssl_$(date +"%d_%m_%y_%H_%M_%S")
   fi
-  apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" install puppet-common="3.7.3-1puppetlabs1" puppetmaster-common="3.7.3-1puppetlabs1"
-  apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" install nodejs>=0.8.15-1contrail1
+  apt-get -y --force-yes -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" install puppet-common="3.7.3-1puppetlabs1" puppetmaster-common="3.7.3-1puppetlabs1"
+  apt-get -y --force-yes -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" install nodejs>=0.8.15-1contrail1
   puppet master --configprint ssldir | xargs rm -rf
   puppet cert list -a
   host=`echo $HOSTNAME | awk '{print tolower($0)}'`
@@ -493,7 +494,7 @@ if [ "$SM" != "" ]; then
     puppet cert generate $host
   fi
 
-  apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" install puppetmaster-passenger="3.7.3-1puppetlabs1"
+  apt-get -y --force-yes -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" install puppetmaster-passenger="3.7.3-1puppetlabs1"
   a2dismod mpm_event
   a2enmod mpm_worker
   service apache2 restart
