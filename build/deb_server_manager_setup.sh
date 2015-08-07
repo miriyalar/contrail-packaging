@@ -175,7 +175,9 @@ fi
 # Do not over-write apt.conf. Instead just append what is necessary
 # retaining other useful configurations such as http::proxy info.
 apt_auth="APT::Get::AllowUnauthenticated \"true\";"
+set +e
 grep --quiet "$apt_auth" apt.conf
+set -e
 if [ "$?" != "0" ]; then
     echo "$apt_auth" >> apt.conf
 fi
@@ -480,8 +482,8 @@ if [ "$SM" != "" ]; then
   if [ -d /var/lib/puppet/ssl ]; then
       mv /var/lib/puppet/ssl /var/lib/puppet/ssl_$(date +"%d_%m_%y_%H_%M_%S")
   fi
-  apt-get -y install puppet-common="3.7.3-1puppetlabs1" puppetmaster-common="3.7.3-1puppetlabs1"
-  apt-get -y install nodejs>=0.8.15-1contrail1
+  apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" install puppet-common="3.7.3-1puppetlabs1" puppetmaster-common="3.7.3-1puppetlabs1"
+  apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" install nodejs>=0.8.15-1contrail1
   puppet master --configprint ssldir | xargs rm -rf
   puppet cert list -a
   host=`echo $HOSTNAME | awk '{print tolower($0)}'`
@@ -491,7 +493,7 @@ if [ "$SM" != "" ]; then
     puppet cert generate $host
   fi
 
-  apt-get -y install puppetmaster-passenger="3.7.3-1puppetlabs1"
+  apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" install puppetmaster-passenger="3.7.3-1puppetlabs1"
   a2dismod mpm_event
   a2enmod mpm_worker
   service apache2 restart
