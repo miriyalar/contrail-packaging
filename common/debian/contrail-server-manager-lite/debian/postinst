@@ -123,4 +123,4 @@ dpkg-scanpackages . | gzip -9c > Packages.gz
 update-rc.d apache2 defaults
 update-rc.d xinetd defaults
 #update-rc.d cobblerd defaults
-update-rc.d puppetmaster defaults
+#update-rc.d puppetmaster defaults

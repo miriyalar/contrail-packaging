@@ -486,13 +486,8 @@ if [ "$SM" != "" ]; then
   apt-get -y --force-yes -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" install puppet-common="3.7.3-1puppetlabs1" puppetmaster-common="3.7.3-1puppetlabs1"
   apt-get -y --force-yes -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" install nodejs>=0.8.15-1contrail1
   puppet master --configprint ssldir | xargs rm -rf
-  puppet cert list -a
-  host=`echo $HOSTNAME | awk '{print tolower($0)}'`
-  if [ "$DOMAIN" != "" ]; then
-    puppet cert generate $host.$DOMAIN
-  else
-    puppet cert generate $host
-  fi
+  host=$(hostname -f)
+  puppet cert list --all 2>&1 | grep -v $(hostname -f) && puppet cert generate $host
 
   apt-get -y --force-yes -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" install puppetmaster-passenger="3.7.3-1puppetlabs1"
   a2dismod mpm_event
