@@ -41,9 +41,6 @@ case $key in
     TESTBED="$2"
     shift # past argument
     ;;
-    -ns|--no-sources-list)
-    SOURCES_LIST=""
-    ;;
     -ni|--no-install-sm-lite)
     INSTALL_SM_LITE=""
     ;;
@@ -69,32 +66,12 @@ if [ "$TESTBED" == "" ] || [ "$CONTRAIL_PKG" == "" ]; then
    exit
 fi
 
-function setup_source_list_for_internet()
-{
-   # Copy sources.list to point to internet repos
-   rel=`lsb_release -r`
-   rel=( $rel )
-   cp /etc/apt/sources.list /etc/apt/sources.list.$(date +%Y_%m_%d__%H_%M_%S).contrailbackup
-   if [ ${rel[1]} == "14.04"  ]; then
-      cp /opt/contrail/contrail_server_manager/ubuntu_14_04_1_sources.list /etc/apt/sources.list
-   else
-      cp /opt/contrail/contrail_server_manager/ubuntu_12_04_3_sources.list /etc/apt/sources.list
-   fi
-   apt-get update
-}
-
 function cleanup_puppet_agent()
 {
    set +e
    apt-get -y --purge autoremove puppet puppet-common hiera
    set -e
 }
-
-# Copy sources list from the installer repo
-if [ "$SOURCES_LIST" != "" ]; then
-   echo "--> Use the sources.list from installer package"
-   setup_source_list_for_internet
-fi
 
 if [ "$CLEANUP_PUPPET_AGENT" != "" ]; then
    echo "--> Remove puppet agent, if it is present"
