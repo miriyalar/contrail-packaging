@@ -164,9 +164,10 @@ echo "deb file:/opt/contrail/contrail_server_manager ./" > local_repo
 #modify /etc/apt/soruces.list/ to add local repo on the top
 set +e
 grep "^deb file:/opt/contrail/contrail_server_manager ./" sources.list
+exit_status=$?
 set -e
 
-if [ $? != 0 ]; then
+if [ $exit_status != 0 ]; then
      cat local_repo sources.list > new_sources.list
      mv new_sources.list sources.list
      apt-get update --yes
@@ -479,12 +480,14 @@ if [ "$SM" != "" ]; then
   fi
   apt-get update
 
+  # Installing curl to prevent older version of curl getting installed in SM-Lite case
+  apt-get -y install curl
   # Install puppet packages
   if [ -d /var/lib/puppet/ssl ]; then
       mv /var/lib/puppet/ssl /var/lib/puppet/ssl_$(date +"%d_%m_%y_%H_%M_%S")
   fi
   apt-get -y --force-yes -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" install puppet-common="3.7.3-1puppetlabs1" puppetmaster-common="3.7.3-1puppetlabs1"
-  apt-get -y --force-yes -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" install nodejs>=0.8.15-1contrail1
+  apt-get -y --force-yes -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" install nodejs=0.8.15-1contrail1
   puppet master --configprint ssldir | xargs rm -rf
   host=$(hostname -f)
   puppet cert list --all 2>&1 | grep -v $(hostname -f) && puppet cert generate $host
@@ -497,7 +500,6 @@ if [ "$SM" != "" ]; then
   if [ -e /etc/init.d/apparmor ]; then
     /etc/init.d/apparmor stop
     update-rc.d -f apparmor remove
-    apt-get --purge remove apparmor apparmor-utils libapparmor-perl libapparmor1 --yes
   fi
 
   apt-get -y install software-properties-common
