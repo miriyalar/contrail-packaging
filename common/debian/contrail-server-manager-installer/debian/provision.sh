@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x
 set -e
 
 start_time=$(date +"%s")
@@ -8,6 +9,7 @@ TESTBED="testbed.py"
 CONTRAIL_PKG=""
 INSTALL_SM_LITE="install_sm_lite"
 CLEANUP_PUPPET_AGENT=""
+NO_LOCAL_REPO=1
 
 function usage()
 {
@@ -20,6 +22,7 @@ function usage()
     echo -e "\t-ns|--no-sources-list"
     echo -e  "\t-ni|--no-install-sm-lite"
     echo -e "\t-cp|--cleanup-puppet-agent"
+    echo -e "\t-nr|--no-local-repo"
     echo ""
 }
 
@@ -41,6 +44,9 @@ case $key in
     TESTBED="$2"
     shift # past argument
     ;;
+    -nr|--no-local-repo)
+    NO_LOCAL_REPO=0
+    ;;
     -ni|--no-install-sm-lite)
     INSTALL_SM_LITE=""
     ;;
@@ -61,10 +67,40 @@ esac
 shift # past argument or value
 done
 
-
 if [ "$TESTBED" == "" ] || [ "$CONTRAIL_PKG" == "" ]; then
    exit
 fi
+
+function mount_contrail_local_repo()
+{
+    set -e
+    # check if package is available
+    if [ ! -f "$CONTRAIL_PKG" ]; then
+        echo "ERROR: $CONTRAIL_PKG : No Such file..."
+        exit 2
+    fi
+
+    # mount package and create local repo
+    repodir=/opt/contrail/contrail_local_repo
+    set +e
+    grep "^deb file:$repodir ./" /etc/apt/sources.list
+    exit_status=$?
+    set -e
+
+    if [ $exit_status != 0 ]; then
+        mkdir -p $repodir
+        dpkg -x $CONTRAIL_PKG $repodir
+        (cd $repodir && tar xfz opt/contrail/contrail_packages/*.tgz)
+        (cd $repodir && DEBIAN_FRONTEND=noninteractive dpkg -i binutils_*.deb dpkg-dev_*.deb libdpkg-perl_*.deb make_*.deb patch_*.deb)
+        (cd $repodir && dpkg-scanpackages . /dev/null | gzip -9c > Packages.gz)
+        datetime_string=$(date +%Y_%m_%d__%H_%M_%S)
+        cp /etc/apt/sources.list /etc/apt/sources.list.contrail.$datetime_string
+        echo >> /etc/apt/sources.list
+        sed -i "1 i\deb file:$repodir ./" /etc/apt/sources.list
+        cp -v /opt/contrail/contrail_server_manager/contrail_local_preferences /etc/apt/preferences.d/contrail_local_repo
+        apt-get update
+    fi
+}
 
 function cleanup_puppet_agent()
 {
@@ -80,6 +116,13 @@ fi
 
 # Install sever manager 
 if [ "$INSTALL_SM_LITE" != "" ]; then
+   # Create a local repo from contrail-install packages
+   # so packages from this repo gets preferred
+   if [ $NO_LOCAL_REPO != 0 ]; then
+       echo "--> Provision contrail local repo"
+       mount_contrail_local_repo
+   fi
+
    echo "--> Install server manager lite"
    pushd /opt/contrail/contrail_server_manager
    ./setup.sh --all --smlite --nowebui --nosm-mon
