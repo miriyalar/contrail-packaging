@@ -13,17 +13,18 @@ NO_LOCAL_REPO=1
 
 function usage()
 {
+    set +x
     echo "Usage"
     echo ""
     echo "$0"
     echo -e "\t-h --help"
     echo -e "\t-c|--contrail-package <pkg>"
     echo -e "\t-t|--testbed <testbed.py>"
-    echo -e "\t-ns|--no-sources-list"
     echo -e  "\t-ni|--no-install-sm-lite"
     echo -e "\t-cp|--cleanup-puppet-agent"
     echo -e "\t-nr|--no-local-repo"
     echo ""
+    set -x
 }
 
 if [ "$#" -eq 0 ]; then
