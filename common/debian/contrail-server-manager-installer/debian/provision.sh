@@ -2,6 +2,9 @@
 set -x
 set -e
 
+log_file=/var/log/contrail/install_logs/provision_$datetime_string.log
+exec &> >(tee -a "$log_file")
+
 start_time=$(date +"%s")
 
 SOURCES_LIST="sources_list"
@@ -13,17 +16,18 @@ NO_LOCAL_REPO=1
 
 function usage()
 {
+    set +x
     echo "Usage"
     echo ""
     echo "$0"
     echo -e "\t-h --help"
     echo -e "\t-c|--contrail-package <pkg>"
     echo -e "\t-t|--testbed <testbed.py>"
-    echo -e "\t-ns|--no-sources-list"
     echo -e  "\t-ni|--no-install-sm-lite"
     echo -e "\t-cp|--cleanup-puppet-agent"
     echo -e "\t-nr|--no-local-repo"
     echo ""
+    set -x
 }
 
 if [ "$#" -eq 0 ]; then
