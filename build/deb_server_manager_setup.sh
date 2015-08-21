@@ -647,6 +647,7 @@ if [ "$WEBUI" != "" ] && [ "$NOWEBUI" == "" ]; then
   WEBUI_CONF_FILE=/etc/contrail/config.global.js
   SM_CONF_FILE=/usr/src/contrail/contrail-web-server-manager/webroot/common/api/sm.config.js
   WEBUI_PATH=/usr/src/contrail/contrail-web-server-manager
+  set +e
   grep "config.featurePkg" $WEBUI_CONF_FILE
   if [ $? != 0 ]; then
      echo "config.featurePkg = {};" >> $WEBUI_CONF_FILE
@@ -717,6 +718,7 @@ if [ "$WEBUI" != "" ] && [ "$NOWEBUI" == "" ]; then
   sed -i "s/smConfig.sm.server_port = .*/smConfig.sm.server_port = 9001;/g" $SM_CONF_FILE
   sed -i "s/smConfig.sm.introspect_ip = .*/smConfig.sm.introspect_ip = '$HOSTIP';/g" $SM_CONF_FILE
   sed -i "s/smConfig.sm.introspect_port = .*/smConfig.sm.introspect_port = 8106;/g" $SM_CONF_FILE
+  set -e
   # start redis and supervisord
   service redis-server restart
   service supervisor restart
@@ -730,6 +732,7 @@ fi
 if [ "$SMMON" != "" ]; then
   echo "### Begin: Installing Server Manager Monitoring"
   echo "SMMON is $SMMON"
+  set +e
   check=`dpkg --list | grep "contrail-server-manager-monitoring "`
   if [ "$check" != ""  ]; then
       gdebi -n $SMMON
@@ -742,6 +745,7 @@ if [ "$SMMON" != "" ]; then
       cat /opt/contrail/server_manager/sm-monitoring-config.ini >> /opt/contrail/server_manager/sm-config.ini
       cat /opt/contrail/server_manager/sm-inventory-config.ini >> /opt/contrail/server_manager/sm-config.ini
   fi
+  set -e
   echo "### End: Installing Server Manager Monitoring"
   if [ "$SMLITE" != "" ]; then
      :
@@ -754,12 +758,14 @@ if [ "$SMMON" != "" ]; then
 fi
 
 if [ "$SM" != "" ] && [ "$NOSMMON" != "" ]; then
+   set +e
    grep "monitoring * = " /opt/contrail/server_manager/sm-config.ini
    if [ $? == 0 ]; then
       sed -i "s/monitoring * = .*/monitoring               = false/g" /opt/contrail/server_manager/sm-config.ini
    else
       sed -i "/listen_port*/amonitoring               = false" /opt/contrail/server_manager/sm-config.ini
    fi
+   set -e
 fi
 
 if [ "$SMLITE" != "" ] && [ "$SM" != "" ]; then
