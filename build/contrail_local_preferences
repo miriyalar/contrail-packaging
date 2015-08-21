@@ -1,6 +1,6 @@
 Package: *
 Pin: origin ""
-Pin-Priority: 999
+Pin-Priority: 990
 
 Package: *
 Pin: release o=Debian
