@@ -38,16 +38,6 @@ else
 os_ver := $(shell PYTHONPATH=$(PYTHONPATH):$(src_path)/../../../tools/packaging/tools/scripts/ python -c "import package_utils; print package_utils.get_platform()")
 endif
 
-ifdef PKG_FILE
-pkg_file :=  $(_pkgFile)
-else
-    ifeq ($(os_ver),ubuntu1204)
-        pkg_file := $(src_path)../../../tools/packaging/common/debian/contrail-server-manager-installer/debian/passenger_file_1204
-    else
-        pkg_file := $(src_path)../../../tools/packaging/common/debian/contrail-server-manager-installer/debian/passenger_file_1404
-    endif
-endif
-
 ifdef PKG_DIRS
 pkg_sources := $(_pkgDirs)
 else
@@ -85,9 +75,7 @@ override_dh_auto_install:
 	install -p -m 755 $(SB_TOP)/tools/packaging/build/cobbler_web.conf  $(buildroot)$(_contrailopt)/contrail_server_manager/cobbler_web.conf
 	install -p -m 755 $(SB_TOP)/tools/packaging/build/cobbler_14.conf  $(buildroot)$(_contrailopt)/contrail_server_manager/cobbler_14.conf
 	install -p -m 755 $(SB_TOP)/tools/packaging/build/cobbler_web_14.conf  $(buildroot)$(_contrailopt)/contrail_server_manager/cobbler_web_14.conf
-	$(src_path)/../../../tools/packaging/tools/scripts/copy_thirdparty_packages.py --package-file $(pkg_file) \
- --destination-dir $(buildroot)$(_contrailopt)/contrail_server_manager \
- --source-dirs $(pkg_sources) || (echo "Copying Built packages failed"; exit 1)
+
 	# install TGZ file and packages list file
 	if [ -f $(TGZ_FILE) ]; then echo "Using TGZ FILE = $(TGZ_FILE)"; install -p -m 644 $(TGZ_FILE) $(buildroot)$(_contrailopt)/contrail_server_manager/contrail_server_manager_packages.tgz; else echo "ERROR: TGZ file containing all debs is not supplied or not present"; echo "Supply Argument: FILE_LIST=<TGZ FILE>"; exit 1; fi
 override_dh_shlibdeps:
