@@ -2,8 +2,6 @@
 set -x
 set -e
 
-datetime_string=$(date +%Y_%m_%d__%H_%M_%S)
-mkdir -p /var/log/contrail/install_logs/
 log_file=/var/log/contrail/install_logs/provision_$datetime_string.log
 exec &> >(tee -a "$log_file")
 
@@ -16,7 +14,6 @@ INSTALL_SM_LITE="install_sm_lite"
 CLEANUP_PUPPET_AGENT=""
 NO_LOCAL_REPO=1
 LOCAL_REPO_DIR=/opt/contrail/contrail_local_repo
-CLUSTER_ID=""
 
 function usage()
 {
@@ -30,7 +27,6 @@ function usage()
     echo -e  "\t-ni|--no-install-sm-lite"
     echo -e "\t-cp|--cleanup-puppet-agent"
     echo -e "\t-nr|--no-local-repo"
-    echo -e "\t-cid|--cluster-id <cluster-id>"
     echo ""
     set -x
 }
@@ -62,10 +58,6 @@ case $key in
     -cp|--no-cleanup-puppet-agent)
     CLEANUP_PUPPET_AGENT="cleanup_puppet_agent"
     ;;
-    -cid|--cluster-id)
-    CLUSTER_ID="$2"
-    shift # past argument
-    ;;
     -h|--help)
     usage
     exit
@@ -87,16 +79,9 @@ fi
 function unmount_contrail_local_repo()
 {
     echo "INFO: Removing Contrail Local Repo - $LOCAL_REPO_DIR"
-    # Remove local repo dir
     if [ -d $LOCAL_REPO_DIR ]; then
         rm -rf $LOCAL_REPO_DIR
     fi
-
-    # Remove preference file
-    if [ -f /etc/apt/preferences.d/contrail_local_repo ]; then
-        rm -f /etc/apt/preferences.d/contrail_local_repo
-    fi
-
     set +e
     grep "^deb file:$LOCAL_REPO_DIR ./" /etc/apt/sources.list
     exit_status=$?
@@ -157,7 +142,6 @@ if [ "$INSTALL_SM_LITE" != "" ]; then
    if [ $NO_LOCAL_REPO != 0 ]; then
        echo "--> Provision contrail local repo"
        mount_contrail_local_repo
-       LOCAL_REPO_MOUNTED=1
    fi
 
    echo "--> Install server manager lite"
@@ -168,11 +152,7 @@ fi
 
 echo "--> Convert testbed.py to server manager entities"
 # Convert testbed.py to server manager object json files
-optional_args=""
-if [ ! -z "$CLUSTER_ID" ]; then
-    optional_args="--cluster-id $CLUSTER_ID"
-fi
-/opt/contrail/server_manager/client/testbed_parser.py --testbed ${TESTBED} --contrail-packages ${CONTRAIL_PKG} $optional_args
+/opt/contrail/server_manager/client/testbed_parser.py --testbed ${TESTBED} --contrail-packages ${CONTRAIL_PKG}
 
 echo "--> Pre provision checks to make sure setup is ready for contrail provisioning"
 # Precheck the targets to make sure that, ready for contrail provisioning
@@ -180,9 +160,7 @@ SERVER_MGR_IP=$(grep listen_ip_addr /opt/contrail/server_manager/sm-config.ini |
 /opt/contrail/server_manager/client/preconfig.py --server-json server.json --server-manager-ip ${SERVER_MGR_IP}
 
 # Remove contrail local repo if any
-if [[ $LOCAL_REPO_MOUNTED -eq 1 ]]; then
-    unmount_contrail_local_repo
-fi
+unmount_contrail_local_repo
 
 echo "--> Adding server manager objects to server manager database"
 # Create package, cluster, server objects
@@ -193,8 +171,7 @@ server-manager add server -f server.json
 echo "--> Provisioning the cluster"
 # Provision the cluster
 CONTRAIL_PKG_ID=$(python -c "import json; fid = open('image.json', 'r'); contents = fid.read(); cjson = json.loads(contents); print cjson['image'][0]['id']")
-CLUSTER_ID=$(python -c "import json; fid = open('cluster.json', 'r'); data = json.load(fid); fid.close(); print data['cluster'][0]['id']")
-server-manager provision -F --cluster_id $CLUSTER_ID ${CONTRAIL_PKG_ID}
+server-manager provision -F --cluster_id cluster ${CONTRAIL_PKG_ID} 
 
 end_time=$(date +"%s")
 diff=$(($end_time-$start_time))
