@@ -579,7 +579,6 @@ if [ "$SM" != "" ]; then
   # Adding server and Public DNS to /etc/resolv.conf if not present
   set +e
   grep "nameserver $LOCALHOSTIP" /etc/resolv.conf
-  set -e
   if [ $? != 0 ]; then
       echo "nameserver $LOCALHOSTIP" >> /etc/resolv.conf
   fi
@@ -595,6 +594,7 @@ if [ "$SM" != "" ]; then
 	echo "bind_master: $LOCALHOSTIP" >> /etc/cobbler/settings
      fi
   fi
+  set -e
 
   # Bind config modification
   if [ "$SMLITE" != "" ]; then
